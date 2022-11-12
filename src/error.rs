@@ -1,3 +1,4 @@
+// use cw_multi_test::error;
 use cosmwasm_std::StdError;
 use thiserror::Error;
 
@@ -6,6 +7,12 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Custom Error val: {val:?}")]
-    CustomError { val: String },
+    #[error("Unauthorized")]
+    Unauthorized{},
+
+    #[error("Too many poll options")]
+    TooManyOptions {},
+
+    // #[error("Custom Error val: {val:?}")]
+    // CustomError { val: String },
 }
