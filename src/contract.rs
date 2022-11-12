@@ -32,13 +32,44 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: ExecuteMsg,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    match msg {
+        ExecuteMsg::CreatePoll { 
+            poll_id, 
+            question, 
+            options 
+        } => execute_create_poll(
+            deps,
+            env,
+            info,
+            poll_id,
+            question,
+            options
+        ), 
+        
+        ExecuteMsg::Vote { 
+            poll_id, 
+            vote 
+        } => unimplemented!(),
+        ExecuteMsg::DeletePoll { poll_id } => unimplemented!(),
+        ExecuteMsg::RevokeVote { poll_id, vote } => unimplemented!(),
+}
+
+fn execute_create_poll(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    poll_id: String,
+    question: String,
+    options: Vec<String>
+) -> Result<Response, ContractError>{
     unimplemented!()
 }
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
@@ -86,4 +117,3 @@ mod tests {
         )
     }
 }
-
