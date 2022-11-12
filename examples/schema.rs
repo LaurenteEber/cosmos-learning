@@ -4,7 +4,7 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use poll_contracts::msg::{CustomResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use poll_contracts::state::State;
+use poll_contracts::state::{Config, Poll, Ballot};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -15,6 +15,8 @@ fn main() {
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(State), &out_dir);
+    export_schema(&schema_for!(Config), &out_dir);
+    export_schema(&schema_for!(Poll), &out_dir);
+    export_schema(&schema_for!(Ballot), &out_dir);
     export_schema(&schema_for!(CustomResponse), &out_dir);
 }
