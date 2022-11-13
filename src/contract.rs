@@ -31,7 +31,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
+pub fn execute (
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -47,10 +47,11 @@ pub fn execute(
         ExecuteMsg::Vote { 
             poll_id, 
             vote 
-        } => execute_vote(deps, env, info, poll_id, question, options),
+        } => execute_vote(deps, env, info, poll_id, vote),
         
         ExecuteMsg::DeletePoll { poll_id } => unimplemented!(),
         ExecuteMsg::RevokeVote { poll_id, vote } => unimplemented!(),
+    }
 }
 
 fn execute_create_poll(
@@ -142,8 +143,8 @@ pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
 mod tests {
     use cosmwasm_std::attr;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use crate::contract::instantiate;
-    use crate::msg::InstantiateMsg;
+    use crate::contract::{instantiate, execute};
+    use crate::msg::{InstantiateMsg, ExecuteMsg};
 
     pub const ADDR1: &str = "addr1";
     pub const ADDR2: &str = "addr2";
@@ -177,5 +178,178 @@ mod tests {
             res.attributes,
             vec![attr("action", "instantiate"), attr("admin", ADDR2)]
         )
+    }
+
+    #[test]
+    fn test_execute_create_poll_valid(){
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info(ADDR1, &vec![]);
+        // Instanciamos el contrato
+        let msg = InstantiateMsg { admin: None };
+        let _res = instantiate(
+            deps.as_mut(), 
+            env.clone(), 
+            info.clone(), 
+            msg
+        ).unwrap();
+
+        // msg de nueva ejecución CreatePoll
+        let msg = ExecuteMsg::CreatePoll { 
+            poll_id: "some_id".to_string(), 
+            question: "What's your favourite Cosmos coin?".to_string(), 
+            options: vec![
+                "Cosmos Hub".to_string(),
+                "Juno".to_string(),
+                "Osmosis".to_string()
+            ] 
+        };
+
+        // Unwrap para el assert
+        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+    }
+
+    #[test]
+    fn test_execute_create_poll_invalid(){
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info(ADDR1, &vec![]);
+        // Instanciamos el contrato
+        let msg = InstantiateMsg{admin:None};
+        let _res = instantiate(
+            deps.as_mut(), 
+            env.clone(), 
+            info.clone(), 
+            msg
+        ).unwrap();
+
+        let msg = ExecuteMsg::CreatePoll { 
+            poll_id: "some_id".to_string(), 
+            question: "What's your favorite number?".to_string(), 
+            options: vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+                "6".to_string(),
+                "7".to_string(),
+                "8".to_string(),
+                "9".to_string(),
+                "10".to_string(),
+                "11".to_string(),
+            ] 
+        };
+
+        // Unwrap error para afirmar una falla
+        let _err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+    }
+
+    #[test]
+    fn test_execute_vote_valid(){
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info(ADDR1, &vec![]);
+        // Instanciando el contrato
+        let msg = InstantiateMsg{admin:None};
+        let _res = instantiate(
+            deps.as_mut(), 
+            env.clone(), 
+            info.clone(), 
+            msg
+        ).unwrap();
+
+        // Creacion de encuesta
+        let msg = ExecuteMsg::CreatePoll { 
+            poll_id: "some_id".to_string(), 
+            question: "What's your favorite Cosmos coin?".to_string(), 
+            options: vec![
+                "Cosmos Hub".to_string(),
+                "Juno".to_string(),
+                "Osmosis".to_string()
+            ]
+        };
+        let _res = execute(
+            deps.as_mut(), 
+            env.clone(), 
+            info.clone(), 
+            msg
+        ).unwrap();
+
+        // Creación del voto, primera votación en la encuesta
+        let msg = ExecuteMsg::Vote { 
+            poll_id: "some_id".to_string(), 
+            vote: "Juno".to_string() 
+        };
+        let _res = execute(
+            deps.as_mut(), 
+            env.clone(), 
+            info.clone(), 
+            msg
+        ).unwrap();
+
+        // cambio en el voto
+        let msg = ExecuteMsg::Vote { 
+            poll_id: "some_id".to_string(), 
+            vote: "Osmosis".to_string()
+        };
+        let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    }
+
+    #[test]
+    fn test_execute_vote_invalid(){
+        let mut deps = mock_dependencies();
+        let env = mock_env();
+        let info = mock_info(ADDR1, &vec![]);
+        // Instanciación del contrato
+        let msg = InstantiateMsg {admin: None};
+        let _res = instantiate(
+            deps.as_mut(), 
+            env.clone(), 
+            info.clone(), 
+            msg
+        ).unwrap();
+
+        // Creación de voto, con some_id de una encuesta no creado aun
+        let msg = ExecuteMsg::Vote { 
+            poll_id: "some_id".to_string(), 
+            vote: "Juno".to_string() };
+        // Unwrap para afirmar el error
+        let _err = execute(
+            deps.as_mut(), 
+            env.clone(), 
+            info.clone(), 
+            msg
+        ).unwrap_err();
+
+        // Creación de encuesta
+        let msg = ExecuteMsg::CreatePoll { 
+            poll_id: "some_id".to_string(), 
+            question: "What's your favourite cosmos coin?".to_string(), 
+            options: vec![
+                "Cosmos Hub".to_string(),
+                "Juno".to_string(),
+                "Osmosis".to_string()
+            ] 
+        };
+        let _res = execute(
+            deps.as_mut(), 
+            env.clone(), 
+            info.clone(), 
+            msg
+        ).unwrap();
+
+        // Voto en encuesta existente pero con opción "DVPN" inexistente
+        let msg = ExecuteMsg::Vote { 
+            poll_id: "some_id".to_string(), 
+            vote: "DVPN".to_string() 
+        };
+        let _err = execute(
+            deps.as_mut(), 
+            env, 
+            info, 
+            msg
+        ).unwrap_err();
     }
 }
