@@ -5,7 +5,7 @@ use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, CONFIG};
+use crate::state::{Config, CONFIG, Poll, POLLS, Ballot, BALLOTS};
 
 const CONTRACT_NAME: &str = "crates.io:poll-contracts";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -42,19 +42,13 @@ pub fn execute(
             poll_id, 
             question, 
             options 
-        } => execute_create_poll(
-            deps,
-            env,
-            info,
-            poll_id,
-            question,
-            options
-        ), 
+        } => execute_create_poll(deps, env, info, poll_id, question, options), 
         
         ExecuteMsg::Vote { 
             poll_id, 
             vote 
-        } => unimplemented!(),
+        } => execute_vote(deps, env, info, poll_id, question, options),
+        
         ExecuteMsg::DeletePoll { poll_id } => unimplemented!(),
         ExecuteMsg::RevokeVote { poll_id, vote } => unimplemented!(),
 }
@@ -67,9 +61,77 @@ fn execute_create_poll(
     question: String,
     options: Vec<String>
 ) -> Result<Response, ContractError>{
-    unimplemented!()
+    if options.len() > 10 {
+        return Err(ContractError::TooManyOptions {  });
+    }
+    let mut opts: Vec<(String, u64)> = vec![];
+    for option in options {
+        opts.push((option, 0));
+    }
+
+    let poll = Poll {
+        creator: info.sender,
+        question, 
+        options: opts
+    };
+
+    POLLS.save(deps.storage, poll_id, &poll)?;
+    Ok(Response::new())
 }
 
+fn execute_vote(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    poll_id: String,
+    vote: String,
+) -> Result<Response, ContractError> {
+    let poll = POLLS.may_load(deps.storage, poll_id.clone())?;
+    match poll {
+        Some(mut poll) => {
+            BALLOTS.update(
+                deps.storage,
+                (info.sender, poll_id.clone()),
+                |ballot| -> StdResult<Ballot> {
+                    match ballot {
+                        Some(ballot) => {
+                            // existe un voto anterior, revocamos el voto anterior
+                            // Buscamos la posición
+                            let position_of_old_vote = poll
+                                .options
+                                .iter()
+                                .position(|option| option.0 == ballot.option)
+                                .unwrap();
+                            // decrementamos el conteo de voto de la opción
+                            poll.options[position_of_old_vote].1 -= 1;
+                            // Actualización del voto
+                            Ok(Ballot {option: vote.clone()})
+                        }
+                        None => {
+                            // No existe un voto anterior, se agrega el ballot
+                            Ok(Ballot {option:vote.clone()})
+                        }
+                    }
+                },
+            )?;
+            // Encontramos la posición del voto y agregamos el contador en 1
+            let position = poll
+                .options
+                .iter()
+                .position(|option| option.0 == vote);
+            if position.is_none(){
+                return Err(ContractError::OptionNotFound {  });
+            }
+            let position = position.unwrap();
+            poll.options[position].1 += 1;
+
+            // Guardamos la actualización de la encuesta
+            POLLS.save(deps.storage, poll_id, &poll)?;
+            Ok(Response::new())
+        },
+        None => Err(ContractError::PollNotFound {  }),
+    }
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
