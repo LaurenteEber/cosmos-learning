@@ -45,7 +45,7 @@ pub enum QueryMsg {
     },
     ConfigUser {},
     AllVoteUser {
-        addess: String,
+        address: String,
     }
     // CustomMsg { val: String },
 }
@@ -63,6 +63,10 @@ pub struct PollResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct VoteResponse {
     pub vote: Option<Ballot>
+}
+
+pub struct UserAdminResponse{
+    pub user_admin: String
 }
 // #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 // #[serde(rename_all = "snake_case")]
